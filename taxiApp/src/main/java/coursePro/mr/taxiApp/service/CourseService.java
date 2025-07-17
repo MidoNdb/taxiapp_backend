@@ -19,8 +19,9 @@ public interface CourseService {
 
     CourseDto save(CourseDto course);
     CourseDto createCourseByAdmin(CourseDto course);
+    CourseDto updateCourseByAdmin(CourseDto course,Long idCourse);
     public void accepterCourse(Long courseId, Long conducteurId);
-    void delete(Long id);
+    boolean delete(Long id);
     
 }
 

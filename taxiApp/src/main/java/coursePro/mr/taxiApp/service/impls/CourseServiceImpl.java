@@ -23,6 +23,7 @@ import coursePro.mr.taxiApp.mapper.PassagerMapper;
 import coursePro.mr.taxiApp.model.NotificationMessage;
 import coursePro.mr.taxiApp.service.CourseService;
 import coursePro.mr.taxiApp.web.NotificationSocketController;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -128,10 +129,41 @@ public class CourseServiceImpl implements CourseService {
         notificationSocketController.sendToUtilisateur(passagerId, notif);
     }
 
-    @Override
-    public void delete(Long id) {
-        repo.deleteById(id);
+   @Override
+@Transactional
+public boolean delete(Long idCourse) {
+    // Validation de l'ID
+    if (idCourse == null || idCourse <= 0) {
+        throw new IllegalArgumentException("ID de course invalide");
     }
+    
+    // Vérifier si la course existe
+    Optional<Course> optCourse = repo.findById(idCourse);
+    if (!optCourse.isPresent()) {
+        throw new EntityNotFoundException("Course non trouvée avec l'ID: " + idCourse);
+    }
+    
+    Course course = optCourse.get();
+    
+    // Vérifier si la course peut être supprimée
+    // (par exemple, ne pas supprimer une course en cours)
+    if (!course.getStatut().equals(StatutCourse.EN_ATTENTE)) {
+        throw new IllegalStateException("Impossible de supprimer une course en cours");
+    }
+    
+    try {
+        // Supprimer la course
+        repo.deleteById(idCourse);
+        
+        // Envoyer une notification de suppression
+        //notificationSocketController.notifyDeletedCourse(idCourse);
+        
+        return true;
+        
+    } catch (Exception e) {
+        throw new RuntimeException("Erreur lors de la suppression de la course", e);
+    }
+}
 
 @Override
 @Transactional
@@ -187,6 +219,60 @@ public CourseDto createCourseByAdmin(CourseDto course) {
     CourseDto savedDto = CourseMapper.toDto(savedEntity);
     
     // Envoyer la notification
+    notificationSocketController.notifyNewCourse(savedDto);
+    
+    return savedDto;
+}
+
+
+@Override
+@Transactional
+public CourseDto updateCourseByAdmin(CourseDto course, Long idCourse) {
+    // Validation des données d'entrée
+    if (course == null || course.getPassager() == null || 
+        course.getPassager().getTelephone() == null) {
+        throw new IllegalArgumentException("Données de course invalides");
+    }
+    
+    // Vérifier si la course existe
+    Optional<Course> optCourse = repo.findById(idCourse);
+    if (!optCourse.isPresent()) {
+        throw new IllegalArgumentException("Course non trouvée avec l'ID: " + idCourse);
+    }
+    
+    Course existingCourse = optCourse.get();
+    
+    // Récupérer le passager existant de la course
+    Passager passager = existingCourse.getPassager();
+    
+    // Mettre à jour seulement le nom et le téléphone
+    Utilisateur utilisateur = passager.getUtilisateur();
+    utilisateur.setNom(course.getPassager().getNom());
+    utilisateur.setTelephone(course.getPassager().getTelephone());
+    
+    // Sauvegarder l'utilisateur mis à jour
+    Utilisateur savedUser = userRepo.save(utilisateur);
+    
+    // Mettre à jour les références du passager
+    passager.setUtilisateur(savedUser);
+    
+    // Mettre à jour la course existante avec les nouvelles données
+    Course entity = CourseMapper.toEntity(course);
+    entity.setId(idCourse); // Conserver l'ID de la course existante
+    entity.setPassager(passager);
+    
+    // Conserver le conducteur existant (ne pas le modifier)
+    entity.setConducteur(existingCourse.getConducteur());
+    
+    // Conserver les autres champs qui ne doivent pas être modifiés
+    //entity.setCreatedAt(existingCourse.getCreatedAt());
+    //entity.setUpdatedAt(new Date()); // Mettre à jour la date de modification
+    
+    // Sauvegarder la course mise à jour
+    Course savedEntity = repo.save(entity);
+    CourseDto savedDto = CourseMapper.toDto(savedEntity);
+    
+    // Envoyer la notification pour course mise à jour
     notificationSocketController.notifyNewCourse(savedDto);
     
     return savedDto;

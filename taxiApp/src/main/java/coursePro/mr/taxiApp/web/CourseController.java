@@ -22,6 +22,7 @@ import coursePro.mr.taxiApp.enums.StatutCourse;
 import coursePro.mr.taxiApp.mapper.CourseMapper;
 import coursePro.mr.taxiApp.security.JwtService;
 import coursePro.mr.taxiApp.service.CourseService;
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
@@ -49,6 +50,83 @@ public class CourseController {
                     .body("Erreur lors de la création de la course : " + e.getMessage());
         }
     }
+     @PutMapping("/admin/updateCourse/{id}")
+public ResponseEntity<?> updateCourseByAdmin(@RequestBody CourseDto dto, @PathVariable Long id) {
+    try {
+        // Validation de l'ID
+        if (id == null || id <= 0) {
+            return ResponseEntity.badRequest()
+                    .body("ID de course invalide");
+        }
+        
+        // Validation du DTO
+        if (dto == null) {
+            return ResponseEntity.badRequest()
+                    .body("Données de course manquantes");
+        }
+        
+        // Appel du service avec le bon nom de méthode
+        CourseDto updatedCourse = courseService.updateCourseByAdmin(dto, id);
+        
+        return ResponseEntity.ok(updatedCourse);
+        
+    } catch (IllegalArgumentException e) {
+        // Erreurs de validation métier
+        return ResponseEntity.badRequest()
+                .body("Erreur de validation : " + e.getMessage());
+                
+    } catch (EntityNotFoundException e) {
+        // Course non trouvée
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Course non trouvée : " + e.getMessage());
+                
+    } catch (Exception e) {
+        // Erreur interne du serveur
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Erreur lors de la mise à jour de la course : " + e.getMessage());
+    }
+}
+    @DeleteMapping("/admin/delete/{id}")
+public ResponseEntity<?> deleteCourseByAdmin(@PathVariable Long id) {
+    try {
+        // Validation de l'ID
+        if (id == null || id <= 0) {
+            return ResponseEntity.badRequest()
+                    .body("ID de course invalide");
+        }
+        
+        // Appel du service pour supprimer la course
+        boolean deleted = courseService.delete(id);
+        
+        if (deleted) {
+            return ResponseEntity.ok()
+                    .body("Course supprimée avec succès");
+        } else {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Erreur lors de la suppression de la course");
+        }
+        
+    } catch (IllegalArgumentException e) {
+        // Erreurs de validation
+        return ResponseEntity.badRequest()
+                .body("Erreur de validation : " + e.getMessage());
+                
+    } catch (EntityNotFoundException e) {
+        // Course non trouvée
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body("Course non trouvée : " + e.getMessage());
+                
+    } catch (IllegalStateException e) {
+        // Course ne peut pas être supprimée
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body("Suppression impossible : " + e.getMessage());
+                
+    } catch (Exception e) {
+        // Erreur interne du serveur
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Erreur lors de la suppression de la course : " + e.getMessage());
+    }
+}
     
     @PostMapping("/passager/demander")
     public ResponseEntity<?> createCourse(@RequestBody CourseDto dto,HttpServletRequest request ) {
