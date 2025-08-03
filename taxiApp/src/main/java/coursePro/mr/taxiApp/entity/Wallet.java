@@ -1,14 +1,9 @@
 package coursePro.mr.taxiApp.entity;
 
+import jakarta.persistence.*;
 import java.time.LocalDateTime;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Wallet {
@@ -28,9 +23,14 @@ public class Wallet {
     @Column(name = "dernier_rechargement")
     private LocalDateTime dernierRechargement;
 
-    // Getters & Setters
+    // ✅ Liste des transactions liées à ce wallet
+    @OneToMany(mappedBy = "wallet", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<TransactionWallet> transactions = new ArrayList<>();
+
+    // ======= Getters & Setters =======
     public Long getId() { return id; }
-    public void setId(Long id){this.id=id;}
+    public void setId(Long id){this.id = id;}
+
     public Conducteur getConducteur() { return conducteur; }
     public void setConducteur(Conducteur conducteur) { this.conducteur = conducteur; }
 
@@ -41,5 +41,10 @@ public class Wallet {
     public void setActif(Boolean actif) { this.actif = actif; }
 
     public LocalDateTime getDernierRechargement() { return dernierRechargement; }
-    public void setDernierRechargement(LocalDateTime dernierRechargement) { this.dernierRechargement = dernierRechargement; }
+    public void setDernierRechargement(LocalDateTime dernierRechargement) {
+        this.dernierRechargement = dernierRechargement;
+    }
+
+    public List<TransactionWallet> getTransactions() { return transactions; }
+    public void setTransactions(List<TransactionWallet> transactions) { this.transactions = transactions; }
 }

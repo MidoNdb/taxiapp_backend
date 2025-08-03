@@ -44,7 +44,7 @@ public class TransactionWallet {
     public void setId(Long id){ this.id = id;}
     public Wallet getWallet() { return wallet; }
     public void setWallet(Wallet wallet) { this.wallet = wallet; }
-    
+
     public Double getMontant() { return montant; }
     public void setMontant(Double montant) { this.montant = montant; }
 
