@@ -1,5 +1,6 @@
 package coursePro.mr.taxiApp.service.impls;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -16,7 +17,6 @@ import coursePro.mr.taxiApp.entity.Conducteur;
 import coursePro.mr.taxiApp.entity.Course;
 import coursePro.mr.taxiApp.entity.Passager;
 import coursePro.mr.taxiApp.entity.Utilisateur;
-import coursePro.mr.taxiApp.enums.Role;
 import coursePro.mr.taxiApp.enums.StatutCourse;
 import coursePro.mr.taxiApp.mapper.CourseMapper;
 import coursePro.mr.taxiApp.mapper.PassagerMapper;
@@ -51,13 +51,13 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<CourseDto> findByPassagerId(Long passagerId) {
-        return repo.findByPassager_Id(passagerId).stream()
+        return repo.findByPassager_IdOrderByCreatedAtDesc(passagerId).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
-    public List<CourseDto> findByConducteurId(Long conducteurId) {
-        return repo.findByConducteur_Id(conducteurId).stream()
+    public List<CourseDto> findByConducteurId(Long conducteurId) {  
+        return repo.findByConducteur_IdOrderByCreatedAtDesc(conducteurId).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
@@ -68,25 +68,25 @@ public class CourseServiceImpl implements CourseService {
 
     @Override
     public List<CourseDto> FindAllCoursEnAttant() {
-        return repo.findByStatut(StatutCourse.EN_ATTENTE).stream()
+        return repo.findByStatutOrderByCreatedAtDesc(StatutCourse.EN_ATTENTE).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
     public List<CourseDto> FindAllCoursEnCours() {
-        return repo.findByStatut(StatutCourse.EN_COURS).stream()
+        return repo.findByStatutOrderByCreatedAtDesc(StatutCourse.EN_COURS).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
     public List<CourseDto> FindAllCoursTerminee() {
-        return repo.findByStatut(StatutCourse.TERMINEE).stream()
+        return repo.findByStatutOrderByCreatedAtDesc(StatutCourse.TERMINEE).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
     @Override
     public List<CourseDto> FindAllCoursAcceptee() {
-        return repo.findByStatut(StatutCourse.ACCEPTEE).stream()
+        return repo.findByStatutOrderByCreatedAtDesc(StatutCourse.ACCEPTEE).stream()
                 .map(CourseMapper::toDto).collect(Collectors.toList());
     }
 
@@ -103,31 +103,62 @@ public class CourseServiceImpl implements CourseService {
 
         return savedDto;
     }
-    // @Override
-    // public CourseDto save(CourseDto dto) {
-    //     Course entity = CourseMapper.toEntity(dto);
-    //     notificationSocketController.notifyNewCourse(CourseMapper.toDto(entity));
-
-    //     return CourseMapper.toDto(repo.save(entity));
+   
+   @Override
+public void accepterCourse(Long courseId, Long conducteurId) {
+    // Validation des paramètres
+    if (courseId == null || conducteurId == null) {
+        throw new IllegalArgumentException("L'ID de la course et l'ID du conducteur ne peuvent pas être null");
+    }
+    
+    // Récupération du conducteur avec gestion d'erreur
+    Conducteur conducteur = conducteurRepo.findById(conducteurId)
+        .orElseThrow(() -> new EntityNotFoundException("Conducteur non trouvé avec l'ID: " + conducteurId));
+    
+    // Récupération de la course avec gestion d'erreur
+    Course course = repo.findById(courseId)
+        .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
+    
+    // Vérification que la course peut être acceptée
+    if (course.getStatut() != StatutCourse.EN_ATTENTE) {
+        throw new IllegalStateException("Cette course ne peut pas être acceptée. Statut actuel: " + course.getStatut());
+    }
+    
+    // Vérification que le conducteur est disponible (optionnel)
+    // if (!conducteur.isDisponible()) {
+    //     throw new IllegalStateException("Le conducteur n'est pas disponible");
     // }
-    @Override
-    public void accepterCourse(Long courseId, Long conducteurId) {
-        Conducteur c = conducteurRepo.findById(conducteurId).orElseThrow();
-        Course course = repo.findById(courseId).orElseThrow();
-        course.setStatut(StatutCourse.ACCEPTEE);
-        course.setConducteur(c);
-        // logiques d'acceptation ici (mise à jour de la course...)
-        repo.save(course);
-        // 📢 e une notification pour le passager concerné
-        Long passagerId = course.getPassager().getId(); // à implémenter
-
+    
+    // Mise à jour de la course
+    course.setStatut(StatutCourse.ACCEPTEE);
+    course.setConducteur(conducteur);
+    course.setPickupTime(LocalDateTime.now()); // Optionnel: définir l'heure d'acceptation
+    
+    // Sauvegarde de la course
+    Course savedCourse = repo.save(course);
+    
+    // Notification au passager
+    try {
+        Long passagerId = savedCourse.getPassager().getId();
+        
         NotificationMessage notif = new NotificationMessage();
         notif.setMessage("Votre course a été acceptée par un conducteur !");
         notif.setUtilisateurId(passagerId);
-
-        // 👉 Envoie ciblé au passager
+        
+        // Envoi ciblé au passager
         notificationSocketController.sendToUtilisateur(passagerId, notif);
+        
+        // Optionnel: Notification au conducteur aussi
+        NotificationMessage notifConducteur = new NotificationMessage();
+        notifConducteur.setMessage("Vous avez accepté une nouvelle course");
+        notifConducteur.setUtilisateurId(conducteurId);
+        notificationSocketController.sendToUtilisateur(conducteurId, notifConducteur);
+        
+    } catch (Exception e) {
+        // Log l'erreur mais ne fait pas échouer la transaction principale
+       // logger.error("Erreur lors de l'envoi de la notification pour la course " + courseId, e);
     }
+}
 
    @Override
 @Transactional

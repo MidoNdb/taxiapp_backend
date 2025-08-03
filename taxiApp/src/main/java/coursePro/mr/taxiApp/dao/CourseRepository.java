@@ -10,8 +10,8 @@ import coursePro.mr.taxiApp.enums.StatutCourse;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Long> {
-    List<Course> findByPassager_Id(Long passagerId);
-    List<Course> findByConducteur_Id(Long conducteurId);
-    List<Course> findByStatut(StatutCourse statut);
+    List<Course> findByPassager_IdOrderByCreatedAtDesc(Long passagerId);
+    List<Course> findByConducteur_IdOrderByCreatedAtDesc(Long conducteurId);
+    List<Course> findByStatutOrderByCreatedAtDesc(StatutCourse statut);
 }
 

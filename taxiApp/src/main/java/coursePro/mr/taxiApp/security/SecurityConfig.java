@@ -54,6 +54,7 @@ public class SecurityConfig {
 
                 .requestMatchers("/courses/conducteur/**").hasRole("CONDUCTEUR")
                 .requestMatchers("/conducteurs/conducteur/**").hasRole("CONDUCTEUR")
+                .requestMatchers("/wallet/conducteur/**").hasRole("CONDUCTEUR")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

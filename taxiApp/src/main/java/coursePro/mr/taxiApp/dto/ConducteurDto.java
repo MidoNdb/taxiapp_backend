@@ -19,6 +19,9 @@ public class ConducteurDto {
     private Boolean disponible;
     private  Point curentPoint;
     
+    public ConducteurDto(Long id){
+        this.id=id;
+    }
      
     public ConducteurDto(Long id,  String nom, String telephone, String motDePasse,
             Role role,String numeroPermis, String vehicule,Boolean disponible) {
