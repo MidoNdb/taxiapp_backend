@@ -124,12 +124,6 @@ public void accepterCourse(Long courseId, Long conducteurId) {
         throw new IllegalStateException("Cette course ne peut pas être acceptée. Statut actuel: " + course.getStatut());
     }
     
-    // Vérification que le conducteur est disponible (optionnel)
-    // if (!conducteur.isDisponible()) {
-    //     throw new IllegalStateException("Le conducteur n'est pas disponible");
-    // }
-    
-    // Mise à jour de la course
     course.setStatut(StatutCourse.ACCEPTEE);
     course.setConducteur(conducteur);
     course.setPickupTime(LocalDateTime.now()); // Optionnel: définir l'heure d'acceptation
@@ -137,7 +131,6 @@ public void accepterCourse(Long courseId, Long conducteurId) {
     // Sauvegarde de la course
     Course savedCourse = repo.save(course);
     
-    // Notification au passager
     try {
         Long passagerId = savedCourse.getPassager().getId();
         
@@ -159,7 +152,34 @@ public void accepterCourse(Long courseId, Long conducteurId) {
        // logger.error("Erreur lors de l'envoi de la notification pour la course " + courseId, e);
     }
 }
-
+    @Override
+public CourseDto updateStatusCourse(Long courseId, String status) {
+    // Validation des paramètres
+    if (courseId == null || status == null || status.trim().isEmpty()) {
+        throw new IllegalArgumentException("L'ID de la course et le statut ne peuvent pas être null ou vides");
+    }
+    
+    // Récupération de la course avec gestion d'erreur
+    Course course = repo.findById(courseId)
+        .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
+    
+    // Conversion du string en enum StatutCourse
+    StatutCourse nouveauStatut;
+    try {
+        nouveauStatut = StatutCourse.valueOf(status.toUpperCase());
+    } catch (IllegalArgumentException e) {
+        throw new IllegalArgumentException("Statut invalide: " + status);
+    }
+    
+    // Mise à jour du statut uniquement
+    course.setStatut(nouveauStatut);
+    
+    // Sauvegarde de la course
+    Course savedCourse = repo.save(course);
+    
+    // Retourner le DTO
+    return CourseMapper.toDto(savedCourse);
+}
    @Override
 @Transactional
 public boolean delete(Long idCourse) {

@@ -1,10 +1,12 @@
 package coursePro.mr.taxiApp.web;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -162,21 +164,45 @@ public ResponseEntity<?> accepterCourse(@PathVariable Long id,HttpServletRequest
                 .body("La course n'est plus disponible.");
         }
         courseService.accepterCourse(id,userId);
-        // Mettre à jour le statut
-       // course.setStatut(StatutCourse.ACCEPTEE);
-        
-
-        // Optionnel : ajouter le conducteur courant (si extrait du token)
-        // Long conducteurId = jwtService.extractUserId(token); // via header
-        // Conducteur conducteur = conducteurRepo.findByUtilisateur_Id(conducteurId).orElseThrow();
-        // course.setConducteur(conducteur);
-
-       // courseService.save(CourseMapper.toDto(course));
-
         return ResponseEntity.ok("Course acceptée");
     } catch (Exception e) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
             .body("Erreur lors de l'acceptation : " + e.getMessage());
+    }
+}
+    
+@PutMapping("/conducteur/{courseId}/status")
+//@PreAuthorize("hasRole('CONDUCTEUR')")
+public ResponseEntity<?> updateCourseStatus(
+        @PathVariable Long courseId,
+        @RequestBody Map<String, String> request) {
+    
+    try {
+        String nouveauStatut = request.get("statut");
+        
+        if (nouveauStatut == null || nouveauStatut.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Le statut est requis"));
+        }
+        
+        CourseDto courseUpdated = courseService.updateStatusCourse(courseId, nouveauStatut);
+        
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Statut de la course mis à jour avec succès",
+            "course", courseUpdated
+        ));
+        
+    } catch (EntityNotFoundException e) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+            .body(Map.of("error", "Course non trouvée", "message", e.getMessage()));
+        
+    } catch (IllegalArgumentException e) {
+        return ResponseEntity.badRequest()
+            .body(Map.of("error", "Données invalides", "message", e.getMessage()));
+        
+    } catch (Exception e) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+            .body(Map.of("error", "Erreur interne du serveur", "message", e.getMessage()));
     }
 }
 

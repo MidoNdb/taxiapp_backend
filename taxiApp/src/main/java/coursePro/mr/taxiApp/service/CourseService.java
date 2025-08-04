@@ -19,6 +19,7 @@ public interface CourseService {
 
     CourseDto save(CourseDto course);
     CourseDto createCourseByAdmin(CourseDto course);
+    CourseDto updateStatusCourse(Long courseId,String status);
     CourseDto updateCourseByAdmin(CourseDto course,Long idCourse);
     public void accepterCourse(Long courseId, Long conducteurId);
     boolean delete(Long id);

@@ -6,5 +6,6 @@ public enum StatutCourse {
     EN_COURS,
     TERMINEE,
     ANNULEE
+    
 }
 
