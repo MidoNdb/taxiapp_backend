@@ -12,7 +12,10 @@ import coursePro.mr.taxiApp.dao.ConducteurRepository;
 import coursePro.mr.taxiApp.dao.CourseRepository;
 import coursePro.mr.taxiApp.dao.PassagerRepository;
 import coursePro.mr.taxiApp.dao.UtilisateurRepository;
+import coursePro.mr.taxiApp.dto.ConducteurDto;
 import coursePro.mr.taxiApp.dto.CourseDto;
+import coursePro.mr.taxiApp.dto.TransactionWalletDto;
+import coursePro.mr.taxiApp.dto.WalletDto;
 import coursePro.mr.taxiApp.entity.Conducteur;
 import coursePro.mr.taxiApp.entity.Course;
 import coursePro.mr.taxiApp.entity.Passager;
@@ -38,10 +41,15 @@ public class CourseServiceImpl implements CourseService {
     @Autowired
     PassagerRepository passagerRepo;
     private final NotificationSocketController notificationSocketController;
+    private final WalletServiceImpl walletService;
+    private final TransactionWalletServiceImpl transactionWalletService;
 
     @Autowired
-    public CourseServiceImpl(NotificationSocketController notificationSocketController) {
+    public CourseServiceImpl(NotificationSocketController notificationSocketController,
+    WalletServiceImpl walletService,TransactionWalletServiceImpl transactionWalletService) {
         this.notificationSocketController = notificationSocketController;
+        this.walletService = walletService;
+        this.transactionWalletService=transactionWalletService;
     }
 
     @Override
@@ -152,17 +160,40 @@ public void accepterCourse(Long courseId, Long conducteurId) {
        // logger.error("Erreur lors de l'envoi de la notification pour la course " + courseId, e);
     }
 }
-    @Override
+// Ajoutez cette méthode dans CourseServiceImpl.java
+
+@Override
+public CourseDto getCourseById(Long courseId) {
+    System.out.println("🔍 Récupération course ID: " + courseId);
+    
+    Course course = repo.findById(courseId)
+        .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
+    
+    CourseDto dto = CourseMapper.toDto(course);
+    System.out.println("✅ Course trouvée - Conducteur: " + 
+                       (dto.getConducteur() != null ? dto.getConducteur().getId() : "null"));
+    
+    return dto;
+}
+
+
+@Override
+@Transactional
 public CourseDto updateStatusCourse(Long courseId, String status) {
     // Validation des paramètres
     if (courseId == null || status == null || status.trim().isEmpty()) {
         throw new IllegalArgumentException("L'ID de la course et le statut ne peuvent pas être null ou vides");
     }
-    
-    // Récupération de la course avec gestion d'erreur
+
+    // Récupération de la course
     Course course = repo.findById(courseId)
         .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
-    
+
+    // Vérification que la course a un conducteur
+    if (course.getConducteur() == null) {
+        throw new IllegalStateException("Cette course n'a pas de conducteur assigné");
+    }
+
     // Conversion du string en enum StatutCourse
     StatutCourse nouveauStatut;
     try {
@@ -170,16 +201,109 @@ public CourseDto updateStatusCourse(Long courseId, String status) {
     } catch (IllegalArgumentException e) {
         throw new IllegalArgumentException("Statut invalide: " + status);
     }
-    
-    // Mise à jour du statut uniquement
+
+    StatutCourse ancienStatut = course.getStatut();
     course.setStatut(nouveauStatut);
-    
+
+    // ✅ TRAITEMENT SPÉCIAL POUR LE STATUT "EN_COURS"
+    if (nouveauStatut == StatutCourse.EN_COURS && ancienStatut != StatutCourse.EN_COURS) {
+        try {
+            deduireCommissionCourse(course);
+        } catch (Exception e) {
+            // La transaction va être rollback automatiquement
+            throw new RuntimeException("Impossible de déduire la commission: " + e.getMessage());
+        }
+    }
+
+    // ✅ TRAITEMENT POUR LE STATUT "TERMINEE"
+    if (nouveauStatut == StatutCourse.TERMINEE && ancienStatut != StatutCourse.TERMINEE) {
+        course.setCompletionTime(LocalDateTime.now());
+    }
+
     // Sauvegarde de la course
     Course savedCourse = repo.save(course);
-    
-    // Retourner le DTO
+
     return CourseMapper.toDto(savedCourse);
 }
+
+private void deduireCommissionCourse(Course course) {
+    try {
+        Conducteur conducteur = course.getConducteur();
+        if (conducteur == null) {
+            throw new IllegalStateException("Aucun conducteur assigné à cette course");
+        }
+
+        Long conducteurId = conducteur.getId();
+        Double montantCourse = course.getMontant();
+
+        if (montantCourse == null || montantCourse <= 0) {
+            throw new IllegalStateException("Montant de course invalide: " + montantCourse);
+        }
+
+        // Calculer la commission (7%)
+        final double TAUX_COMMISSION = 0.07;
+        double montantCommission = montantCourse * TAUX_COMMISSION;
+
+        // Récupérer le wallet du conducteur
+        ConducteurDto conducteurDto = new ConducteurDto(conducteurId);
+        WalletDto walletDto = walletService.getOrCreateWallet(conducteurDto);
+
+        // Vérification finale du solde
+        if (!walletService.soldeSuffisant(walletDto, montantCommission)) {
+            throw new RuntimeException(
+                String.format("Solde insuffisant pour déduire la commission. " +
+                    "Solde: %.2f MRU, Commission: %.2f MRU",
+                    walletDto.getSolde(), montantCommission)
+            );
+        }
+
+        // Déduire la commission
+        walletService.retirerCommission(walletDto, montantCommission);
+
+        // Récupérer le wallet mis à jour
+        WalletDto walletUpdated = walletService.getWalletWithTransactions(conducteurId);
+
+        // Créer la transaction de commission
+        transactionWalletService.enregistrerCommission(
+            walletUpdated,
+            montantCommission,
+            course.getId(),
+            conducteurId
+        );
+
+    } catch (Exception e) {
+        throw new RuntimeException("Erreur lors de la déduction de commission: " + e.getMessage());
+    }
+}
+
+//     @Override
+// public CourseDto updateStatusCourse(Long courseId, String status) {
+//     // Validation des paramètres
+//     if (courseId == null || status == null || status.trim().isEmpty()) {
+//         throw new IllegalArgumentException("L'ID de la course et le statut ne peuvent pas être null ou vides");
+//     }
+    
+//     // Récupération de la course avec gestion d'erreur
+//     Course course = repo.findById(courseId)
+//         .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
+    
+//     // Conversion du string en enum StatutCourse
+//     StatutCourse nouveauStatut;
+//     try {
+//         nouveauStatut = StatutCourse.valueOf(status.toUpperCase());
+//     } catch (IllegalArgumentException e) {
+//         throw new IllegalArgumentException("Statut invalide: " + status);
+//     }
+    
+//     // Mise à jour du statut uniquement
+//     course.setStatut(nouveauStatut);
+    
+//     // Sauvegarde de la course
+//     Course savedCourse = repo.save(course);
+    
+//     // Retourner le DTO
+//     return CourseMapper.toDto(savedCourse);
+// }
    @Override
 @Transactional
 public boolean delete(Long idCourse) {

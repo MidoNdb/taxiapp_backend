@@ -44,10 +44,12 @@ public class SecurityConfig {
                 //.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // Allow OPTIONS requests
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**", "/ws").permitAll()
-
+                //.requestMatchers("/transactions/uploads/**").permitAll()
                 .requestMatchers("/courses/admin/**").hasRole("ADMIN")
                 .requestMatchers("/passagers/admin/**").hasRole("ADMIN")
-                .requestMatchers("/conducteurs/admin/**").hasRole("ADMIN")
+                .requestMatchers("/conducteurs/admin/**").hasRole("ADMIN") 
+                .requestMatchers("/transactions/admin/**").hasRole("ADMIN")
+                .requestMatchers("/transactions/uploads/**").hasRole("ADMIN")
 
                 .requestMatchers("/courses/passager/**").hasRole("PASSAGER")
                 .requestMatchers("/passagers/passager/**").hasRole("PASSAGER")
@@ -55,6 +57,8 @@ public class SecurityConfig {
                 .requestMatchers("/courses/conducteur/**").hasRole("CONDUCTEUR")
                 .requestMatchers("/conducteurs/conducteur/**").hasRole("CONDUCTEUR")
                 .requestMatchers("/wallet/conducteur/**").hasRole("CONDUCTEUR")
+                 
+                .requestMatchers("/transactions/conducteur/**").hasRole("CONDUCTEUR")
                 .anyRequest().authenticated()
             )
             .authenticationProvider(authenticationProvider())

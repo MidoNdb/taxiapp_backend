@@ -8,6 +8,9 @@ import org.slf4j.LoggerFactory;
 
 import coursePro.mr.taxiApp.dto.CourseDto;
 import coursePro.mr.taxiApp.dto.NotificationDto;
+import coursePro.mr.taxiApp.dto.RechargementNotificationDto;
+import coursePro.mr.taxiApp.entity.TransactionWallet;
+import coursePro.mr.taxiApp.mapper.ConducteurMapper;
 import coursePro.mr.taxiApp.model.NotificationMessage;
 
 @Controller
@@ -37,7 +40,27 @@ public class NotificationSocketController {
             logger.error("❌ Erreur lors de l'envoi de la notification: {}", e.getMessage(), e);
         }
     }
-    
+   public void notifyAdminRechargement(TransactionWallet transaction) {
+        try {
+            logger.info("💰 Notification admin - Nouveau rechargement ID: {}", transaction.getId());
+            
+            RechargementNotificationDto notification = new RechargementNotificationDto();
+            notification.setType("NOUVEAU_RECHARGEMENT");
+            notification.setTransactionId(transaction.getId());
+            notification.setMontant(transaction.getMontant());
+            notification.setConducteur(ConducteurMapper.toDto(transaction.getWallet().getConducteur()));
+            notification.setPreuveUrl(transaction.getPreuveUrl());
+            notification.setDateDemande(transaction.getDate());
+            notification.setStatut(transaction.getStatut().toString());
+            
+            // Envoi vers tous les admins connectés
+            messagingTemplate.convertAndSend("/topic/admin/rechargements", notification);
+            logger.info("✅ Notification admin rechargement envoyée");
+            
+        } catch (Exception e) {
+            logger.error("❌ Erreur notification admin rechargement: {}", e.getMessage(), e);
+        }
+    }
     // envoyer à un utilisateur spécifique
     public void sendToUtilisateur(Long userId, NotificationMessage notification) {
         try {

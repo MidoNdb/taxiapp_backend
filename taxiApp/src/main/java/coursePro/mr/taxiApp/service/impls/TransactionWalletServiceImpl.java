@@ -13,27 +13,34 @@ import coursePro.mr.taxiApp.mapper.WalletMapper;
 import coursePro.mr.taxiApp.service.TransactionWalletService;
 import coursePro.mr.taxiApp.service.WalletService;
 import jakarta.transaction.Transactional;
+
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import coursePro.mr.taxiApp.web.NotificationSocketController;
 
 @Service
 public class TransactionWalletServiceImpl implements TransactionWalletService {
 
     private final TransactionWalletRepository transactionRepo;
     private final WalletRepository walletRepository;
-    private final WalletService walletService;
+    private final WalletService walletService; 
+    private final NotificationSocketController notificationController;
 
     public TransactionWalletServiceImpl(
         TransactionWalletRepository transactionRepo,
         WalletRepository walletRepository,
-        WalletService walletService
+        WalletService walletService,
+        NotificationSocketController notificationController
     ) {
         this.transactionRepo = transactionRepo;
         this.walletRepository = walletRepository;
         this.walletService = walletService;
+        this.notificationController=notificationController;
     }
 
     @Override
@@ -44,7 +51,7 @@ public class TransactionWalletServiceImpl implements TransactionWalletService {
         }
 
         Wallet wallet = walletOpt.get();
-       
+        
         TransactionWallet transaction = new TransactionWallet();
         transaction.setWallet(wallet);
         transaction.setMontant(montant);
@@ -53,32 +60,55 @@ public class TransactionWalletServiceImpl implements TransactionWalletService {
         transaction.setStatut(StatutTransaction.EN_ATTENTE);
 
         TransactionWallet saved = transactionRepo.save(transaction);
+        
+        // 🚨 NOTIFICATION ADMIN - NOUVEAU
+        notificationController.notifyAdminRechargement(saved);
+        
         return TransactionWalletMapper.toDto(saved);
     }
+
+  
     @Override
 public List<TransactionWalletDto> getAll() {
-    return transactionRepo.findAll().stream()
+    return transactionRepo.findAllByOrderByDateDesc().stream()
             .map(TransactionWalletMapper::toDto)
             .collect(Collectors.toList());
 }
 
-    @Override
-    @Transactional
-    public void validerRechargement(TransactionWalletDto transactionDto) {
-        TransactionWallet transaction = transactionRepo.findById(transactionDto.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Transaction introuvable"));
-        transaction.setStatut(StatutTransaction.VALIDEE);
-        transactionRepo.save(transaction);
-        walletService.ajouterSolde(WalletMapper.toDto(transaction.getWallet()), transaction.getMontant());
+   @Override
+@Transactional
+public void validerRechargement(TransactionWalletDto transactionDto) {
+    TransactionWallet transaction = transactionRepo.findById(transactionDto.getId())
+            .orElseThrow(() -> new IllegalArgumentException("Transaction introuvable"));
+
+    if (transaction.getStatut() != StatutTransaction.EN_ATTENTE) {
+        throw new IllegalStateException("Cette transaction a déjà été traitée.");
     }
 
-    @Override
-    public void rejeterRechargement(TransactionWalletDto transactionDto) {
-        TransactionWallet transaction = transactionRepo.findById(transactionDto.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Transaction introuvable"));
-        transaction.setStatut(StatutTransaction.REJETEE);
-        transactionRepo.save(transaction);
+    transaction.setStatut(StatutTransaction.VALIDEE);
+
+    Wallet wallet = transaction.getWallet();
+    wallet.setSolde(wallet.getSolde() + transaction.getMontant());
+    wallet.setDernierRechargement(LocalDateTime.now());
+    wallet.setActif(true);
+
+    // ✅ Pas besoin de save séparé, Hibernate gère la persistance avec @Transactional
+}
+
+@Override
+@Transactional
+public void rejeterRechargement(TransactionWalletDto transactionDto) {
+    TransactionWallet transaction = transactionRepo.findById(transactionDto.getId())
+            .orElseThrow(() -> new IllegalArgumentException("Transaction introuvable"));
+
+    if (transaction.getStatut() != StatutTransaction.EN_ATTENTE) {
+        throw new IllegalStateException("Cette transaction a déjà été traitée.");
     }
+
+    transaction.setStatut(StatutTransaction.REJETEE);
+    // ✅ Pas besoin de save séparé ici non plus
+}
+
 
     @Override
     public List<TransactionWalletDto> getTransactionsParWallet(WalletDto walletDto) {
@@ -93,4 +123,42 @@ public List<TransactionWalletDto> getAll() {
                 .map(TransactionWalletMapper::toDto)
                 .collect(Collectors.toList());
     }
+
+    /**
+ * ✅ Enregistre une transaction de commission avec validation du conducteur
+ */
+
+@Override
+@Transactional
+public TransactionWalletDto enregistrerCommission(WalletDto walletDto, double montant, 
+                                                 Long courseId, Long conducteurId) {
+    try {
+        // Récupérer le wallet entity
+        Wallet wallet = walletRepository.findById(walletDto.getId())
+            .orElseThrow(() -> new RuntimeException("Wallet introuvable"));
+
+        // Créer la transaction de commission
+        TransactionWallet transaction = new TransactionWallet();
+        transaction.setWallet(wallet);
+        transaction.setMontant(montant);
+        transaction.setType(TypeTransaction.COMMISSION);
+        transaction.setStatut(StatutTransaction.VALIDEE);
+        transaction.setDate(LocalDateTime.now());
+        
+        // Ajouter une description pour identifier la course
+       // transaction.setDescription("Commission course #" + courseId);
+
+        // Sauvegarder la transaction
+        TransactionWallet savedTransaction = transactionRepo.save(transaction);
+
+        return TransactionWalletMapper.toDto(savedTransaction);
+
+    } catch (Exception e) {
+        throw new RuntimeException("Erreur lors de l'enregistrement de la commission: " + e.getMessage());
+    }
+}
+
+
+
+
 }

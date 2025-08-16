@@ -10,5 +10,6 @@ public interface TransactionWalletService {
     void rejeterRechargement(TransactionWalletDto transaction);
     public List<TransactionWalletDto> getAll();
     List<TransactionWalletDto> getTransactionsParWallet(WalletDto wallet);
+    TransactionWalletDto enregistrerCommission(WalletDto walletDto, double montantCommission, Long courseId, Long conducteurId);
 }
  

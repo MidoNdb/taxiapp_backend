@@ -10,4 +10,6 @@ import java.util.List;
 
 public interface TransactionWalletRepository extends JpaRepository<TransactionWallet, Long> {
     List<TransactionWallet> findByWallet(Wallet wallet);
+    List<TransactionWallet> findAllByOrderByDateDesc();
+
 }

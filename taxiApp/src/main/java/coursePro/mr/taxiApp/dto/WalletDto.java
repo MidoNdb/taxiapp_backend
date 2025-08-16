@@ -6,7 +6,7 @@ import java.util.List;
 
 public class WalletDto {
     private Long id;
-    private Long conducteurId;
+    private ConducteurDto conducteur;
     private Double solde;
     private Boolean actif;
     private LocalDateTime dernierRechargement;
@@ -15,10 +15,10 @@ public class WalletDto {
     public WalletDto() {
     }
     
-    public WalletDto(Long id, Long conducteurId, Double solde, Boolean actif, LocalDateTime dernierRechargement,
+    public WalletDto(Long id, ConducteurDto conducteur, Double solde, Boolean actif, LocalDateTime dernierRechargement,
             List<TransactionWalletDto> transactions) {
         this.id = id;
-        this.conducteurId = conducteurId;
+        this.conducteur = conducteur;
         this.solde = solde;
         this.actif = actif;
         this.dernierRechargement = dernierRechargement;
@@ -30,12 +30,7 @@ public class WalletDto {
     public void setId(Long id) {
         this.id = id;
     }
-    public Long getConducteurId() {
-        return conducteurId;
-    }
-    public void setConducteurId(Long conducteurId) {
-        this.conducteurId = conducteurId;
-    }
+    
     public Double getSolde() {
         return solde;
     }
@@ -62,5 +57,13 @@ public class WalletDto {
     }
 
     // Getters & Setters
+
+    public ConducteurDto getConducteur() {
+        return conducteur;
+    }
+
+    public void setConducteur(ConducteurDto conducteur) {
+        this.conducteur = conducteur;
+    }
 }
 

@@ -8,6 +8,7 @@ import coursePro.mr.taxiApp.entity.Course;
 public interface CourseService {
 
     Course findById(Long id);
+    CourseDto getCourseById(Long courseId);
     List<CourseDto> findByPassagerId(Long passagerId);
     List<CourseDto> findByConducteurId(Long conducteurId);
     List<CourseDto> findAll();

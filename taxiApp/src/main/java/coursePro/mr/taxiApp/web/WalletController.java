@@ -47,195 +47,78 @@ public class WalletController {
         this.transactionWalletService = transactionWalletService;
     }
 
-    @GetMapping("/conducteur/mon_wallet")
-    public ResponseEntity<WalletDto> getMonWallet(HttpServletRequest request) {
-        try {
-            System.out.println("🔍 === DEBUT GET WALLET ===");
-            
-            // Vérification de l'authentification via SecurityContext
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            System.out.println("🔑 Authentication: " + (auth != null ? auth.getName() : "null"));
-            System.out.println("🔑 Authorities: " + (auth != null ? auth.getAuthorities() : "null"));
-            
-            String authHeader = request.getHeader("Authorization");
-            System.out.println("🔑 Auth Header: " + (authHeader != null ? "Bearer ***" : "null"));
-            
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                System.err.println("❌ Token manquant ou invalide");
-                return ResponseEntity.status(401).build();
-            }
-
-            String token = authHeader.substring(7);
-            Long id = jwtService.extractUserId(token);
-            String role = jwtService.extractRole(token); // Assurez-vous que cette méthode existe
-            
-            System.out.println("🆔 User ID: " + id);
-            System.out.println("🔐 Role extraite du token: " + role);
-
-            ConducteurDto conducteur = new ConducteurDto(id);
-            WalletDto wallet = walletService.getOrCreateWallet(conducteur);
-
-            System.out.println("✅ Wallet récupéré avec succès");
-            return ResponseEntity.ok(wallet);
-
-        } catch (Exception e) {
-            System.err.println("❌ Erreur récupération wallet: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(500).build();
+   @GetMapping("/conducteur/mon_wallet")
+public ResponseEntity<WalletDto> getMonWallet(HttpServletRequest request) {
+    try {
+        System.out.println("🔍 === DEBUT GET WALLET ===");
+        
+        // Vérification de l'authentification via SecurityContext
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        System.out.println("🔑 Authentication: " + (auth != null ? auth.getName() : "null"));
+        System.out.println("🔑 Authorities: " + (auth != null ? auth.getAuthorities() : "null"));
+        
+        String authHeader = request.getHeader("Authorization");
+        System.out.println("🔑 Auth Header: " + (authHeader != null ? "Bearer ***" : "null"));
+        
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            System.err.println("❌ Token manquant ou invalide");
+            return ResponseEntity.status(401).build();
         }
+
+        String token = authHeader.substring(7);
+        Long conducteurId = jwtService.extractUserId(token);
+        String role = jwtService.extractRole(token);
+        
+        System.out.println("🆔 User ID: " + conducteurId);
+        System.out.println("🔐 Role extraite du token: " + role);
+
+        // Utiliser la nouvelle méthode qui récupère le wallet avec toutes ses transactions
+        WalletDto wallet = walletService.getWalletWithTransactions(conducteurId);
+
+        System.out.println("✅ Wallet récupéré avec succès - Transactions: " + 
+                          (wallet.getTransactions() != null ? wallet.getTransactions().size() : 0));
+        return ResponseEntity.ok(wallet);
+
+    } catch (Exception e) {
+        System.err.println("❌ Erreur récupération wallet: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(500).build();
     }
+}
 
-    @PostMapping("/conducteur/rechargement")
-    public ResponseEntity<?> rechargerWallet(
-            @RequestParam("montant") double montant,
-            @RequestParam("imageFile") MultipartFile imageFile,
-            HttpServletRequest request
-    ) {
-        System.out.println("🚀 === DEBUT RECHARGEMENT ===");
-        System.out.println("🔍 Montant reçu: " + montant);
-        System.out.println("🔍 Image: " + (imageFile != null ? imageFile.getOriginalFilename() : "null"));
-        System.out.println("🔍 Taille image: " + (imageFile != null ? imageFile.getSize() : "0"));
-
-        try {
-            // ✅ Vérification de l'authentification et des rôles
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            System.out.println("🔑 Authentication principal: " + (auth != null ? auth.getName() : "null"));
-            System.out.println("🔑 Authorities: " + (auth != null ? auth.getAuthorities() : "null"));
-            
-            if (auth == null || !auth.isAuthenticated()) {
-                System.err.println("❌ Utilisateur non authentifié");
-                return ResponseEntity.status(401).body("Utilisateur non authentifié");
-            }
-            
-            // Vérification du rôle CONDUCTEUR
-            boolean hasConducteurRole = auth.getAuthorities().stream()
-                .anyMatch(authority -> authority.getAuthority().equals("ROLE_CONDUCTEUR"));
-            
-            if (!hasConducteurRole) {
-                System.err.println("❌ Rôle CONDUCTEUR manquant. Rôles actuels: " + auth.getAuthorities());
-                return ResponseEntity.status(403).body("Accès interdit - Rôle CONDUCTEUR requis");
-            }
-            
-            System.out.println("✅ Rôle CONDUCTEUR vérifié");
-
-            // ✅ Validation des paramètres
-            if (montant <= 0) {
-                return ResponseEntity.badRequest().body("Montant invalide");
-            }
-            
-            if (imageFile == null || imageFile.isEmpty()) {
-                return ResponseEntity.badRequest().body("Image requise");
-            }
-
-            // ✅ Extraction de l'ID utilisateur
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-                return ResponseEntity.status(401).body("Token manquant");
-            }
-
-            String token = authHeader.substring(7);
-            Long id = jwtService.extractUserId(token);
-            
-            System.out.println("🆔 ID Conducteur: " + id);
-            
-            ConducteurDto conducteur = new ConducteurDto(id);
-            WalletDto walletDto = walletService.getOrCreateWallet(conducteur);
-
-            // ✅ Gestion des fichiers - Chemin simplifié
-            String tempDir = System.getProperty("java.io.tmpdir");
-            String fullUploadPath = tempDir + File.separator + "taxiapp-uploads";
-            File uploadDirectory = new File(fullUploadPath);
-            
-            System.out.println("📁 Répertoire d'upload: " + fullUploadPath);
-            
-            if (!uploadDirectory.exists()) {
-                boolean created = uploadDirectory.mkdirs();
-                System.out.println("📁 Dossier créé: " + created);
-                
-                if (!uploadDirectory.canWrite()) {
-                    System.err.println("❌ Permissions insuffisantes: " + uploadDirectory.getAbsolutePath());
-                    return ResponseEntity.status(500).body("Permissions insuffisantes");
-                }
-            }
-
-            // ✅ Nom de fichier sécurisé
-            String originalFilename = imageFile.getOriginalFilename();
-            String fileExtension = "";
-            if (originalFilename != null && originalFilename.contains(".")) {
-                fileExtension = originalFilename.substring(originalFilename.lastIndexOf("."));
-            }
-            
-            String filename = System.currentTimeMillis() + "_conducteur_" + id + fileExtension;
-            File destinationFile = new File(uploadDirectory, filename);
-            
-            System.out.println("💾 Sauvegarde vers: " + destinationFile.getAbsolutePath());
-
-            // ✅ Sauvegarde du fichier
-            try {
-                imageFile.transferTo(destinationFile);
-                System.out.println("✅ Fichier sauvegardé avec succès");
-            } catch (IOException e) {
-                System.err.println("❌ Erreur sauvegarde: " + e.getMessage());
-                
-                try {
-                    Files.copy(imageFile.getInputStream(), destinationFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                    System.out.println("✅ Fichier sauvegardé avec méthode alternative");
-                } catch (IOException fallbackException) {
-                    System.err.println("❌ Échec méthode alternative: " + fallbackException.getMessage());
-                    return ResponseEntity.status(500).body("Impossible de sauvegarder le fichier");
-                }
-            }
-
-            // ✅ Vérification du fichier
-            if (!destinationFile.exists() || destinationFile.length() == 0) {
-                return ResponseEntity.status(500).body("Fichier non sauvegardé correctement");
-            }
-
-            System.out.println("✅ Fichier vérifié - Taille: " + destinationFile.length() + " bytes");
-
-            // ✅ URL pour la base de données
-            String preuveUrl = "/uploads/preuves/" + filename;
-
-            // ✅ Enregistrement de la transaction
-            transactionWalletService.enregistrerRechargement(walletDto, montant, preuveUrl);
-            
-            System.out.println("✅ Rechargement enregistré avec succès");
-            return ResponseEntity.ok().body("Rechargement en attente de validation");
-            
-        } catch (Exception e) {
-            System.err.println("❌ ERREUR COMPLETE: " + e.getMessage());
-            e.printStackTrace();
-            return ResponseEntity.status(500).body("Erreur interne: " + e.getMessage());
-        } finally {
-            System.out.println("🏁 === FIN RECHARGEMENT ===");
-        }
+    
+@PutMapping("/admin/validate/{id}")
+public ResponseEntity<?> validerTransactionAdmin(@PathVariable Long id) {
+    try {
+        System.out.println("🔍 Validation transaction ID: " + id);
+        
+        TransactionWalletDto dto = new TransactionWalletDto();
+        dto.setId(id);
+        transactionService.validerRechargement(dto);
+        
+        System.out.println("✅ Transaction validée avec succès");
+        return ResponseEntity.ok("Transaction validée avec succès.");
+    } catch (Exception e) {
+        System.err.println("❌ Erreur validation: " + e.getMessage());
+        return ResponseEntity.status(500).body("Erreur lors de la validation: " + e.getMessage());
     }
+}
 
-    // ✅ Valider une transaction
-    @PutMapping("/{id}/valider")
-    public ResponseEntity<?> validerTransaction(@PathVariable Long id) {
-        try {
-            TransactionWalletDto dto = new TransactionWalletDto();
-            dto.setId(id);
-            transactionService.validerRechargement(dto);
-            return ResponseEntity.ok("Transaction validée avec succès.");
-        } catch (Exception e) {
-            System.err.println("❌ Erreur validation: " + e.getMessage());
-            return ResponseEntity.status(500).body("Erreur lors de la validation");
-        }
+// ❌ Rejeter une transaction - ADMIN  
+@PutMapping("/admin/reject/{id}")
+public ResponseEntity<?> rejeterTransactionAdmin(@PathVariable Long id) {
+    try {
+        System.out.println("🔍 Rejet transaction ID: " + id);
+        
+        TransactionWalletDto dto = new TransactionWalletDto();
+        dto.setId(id);
+        transactionService.rejeterRechargement(dto);
+        
+        System.out.println("✅ Transaction rejetée avec succès");
+        return ResponseEntity.ok("Transaction rejetée avec succès.");
+    } catch (Exception e) {
+        System.err.println("❌ Erreur rejet: " + e.getMessage());
+        return ResponseEntity.status(500).body("Erreur lors du rejet: " + e.getMessage());
     }
-
-    // ❌ Rejeter une transaction
-    @PutMapping("/{id}/rejeter")
-    public ResponseEntity<?> rejeterTransaction(@PathVariable Long id) {
-        try {
-            TransactionWalletDto dto = new TransactionWalletDto();
-            dto.setId(id);
-            transactionService.rejeterRechargement(dto);
-            return ResponseEntity.ok("Transaction rejetée.");
-        } catch (Exception e) {
-            System.err.println("❌ Erreur rejet: " + e.getMessage());
-            return ResponseEntity.status(500).body("Erreur lors du rejet");
-        }
-    }
+}
 }
