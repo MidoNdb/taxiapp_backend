@@ -1,3 +1,4 @@
+// ✅ CorsConfig.java - Version sans credentials pour correspondre
 package coursePro.mr.taxiApp.config;
 
 import org.springframework.context.annotation.Configuration;
@@ -10,9 +11,9 @@ public class CorsConfig implements WebMvcConfigurer {
     @Override 
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins("*")
-                
-                .allowedMethods("*")
+                .allowedOrigins("http://localhost:3000") // ✅ Origine spécifique
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*");
+                // ✅ Pas de allowCredentials pour correspondre à WebSocketConfig
     }
 }

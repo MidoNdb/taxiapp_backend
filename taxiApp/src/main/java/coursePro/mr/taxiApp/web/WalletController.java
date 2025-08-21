@@ -55,7 +55,6 @@ public ResponseEntity<WalletDto> getMonWallet(HttpServletRequest request) {
         // Vérification de l'authentification via SecurityContext
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         System.out.println("🔑 Authentication: " + (auth != null ? auth.getName() : "null"));
-        System.out.println("🔑 Authorities: " + (auth != null ? auth.getAuthorities() : "null"));
         
         String authHeader = request.getHeader("Authorization");
         System.out.println("🔑 Auth Header: " + (authHeader != null ? "Bearer ***" : "null"));
@@ -71,21 +70,20 @@ public ResponseEntity<WalletDto> getMonWallet(HttpServletRequest request) {
         
         System.out.println("🆔 User ID: " + conducteurId);
         System.out.println("🔐 Role extraite du token: " + role);
-
-        // Utiliser la nouvelle méthode qui récupère le wallet avec toutes ses transactions
+        
+        // Cette méthode va maintenant créer le wallet s'il n'existe pas
         WalletDto wallet = walletService.getWalletWithTransactions(conducteurId);
-
-        System.out.println("✅ Wallet récupéré avec succès - Transactions: " + 
-                          (wallet.getTransactions() != null ? wallet.getTransactions().size() : 0));
+        
+        System.out.println("✅ Wallet récupéré/créé avec succès - Transactions: " +
+                           (wallet.getTransactions() != null ? wallet.getTransactions().size() : 0));
         return ResponseEntity.ok(wallet);
-
+        
     } catch (Exception e) {
-        System.err.println("❌ Erreur récupération wallet: " + e.getMessage());
+        System.err.println("❌ Erreur récupération/création wallet: " + e.getMessage());
         e.printStackTrace();
         return ResponseEntity.status(500).build();
     }
 }
-
     
 @PutMapping("/admin/validate/{id}")
 public ResponseEntity<?> validerTransactionAdmin(@PathVariable Long id) {

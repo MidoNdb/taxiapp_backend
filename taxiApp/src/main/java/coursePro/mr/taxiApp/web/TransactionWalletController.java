@@ -140,6 +140,7 @@ public ResponseEntity<Resource> getProofImage(
     public ResponseEntity<WalletDto> getWalletWithTransactions(@PathVariable Long conducteurId) {
         return ResponseEntity.ok(walletService.getWalletWithTransactions(conducteurId));
     }
+    
 @PostMapping("/conducteur/rechargement")
 public ResponseEntity<?> rechargerWallet(
         @RequestParam("montant") double montant,
@@ -147,12 +148,7 @@ public ResponseEntity<?> rechargerWallet(
         HttpServletRequest request
 ) {
     try {
-        System.out.println("🟢 DÉBUT rechargement - Montant: " + montant);
-        System.out.println("🟢 Fichier reçu: " + imageFile.getOriginalFilename());
-        System.out.println("🟢 Taille fichier: " + imageFile.getSize() + " bytes");
-        System.out.println("🟢 Content-Type: " + imageFile.getContentType());
         
-        // Validation des paramètres
         if (montant <= 0) {
             System.out.println("❌ Montant invalide: " + montant);
             return ResponseEntity.badRequest().body(

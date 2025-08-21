@@ -44,22 +44,25 @@ public WalletDto getOrCreateWallet(ConducteurDto conducteurDto) {
 
     // Conversion en DTO SANS les transactions pour de meilleures performances
     return WalletMapper.toDtoWithoutTransactions(wallet);
-}
-@Override
+}@Override
 public WalletDto getWalletWithTransactions(Long conducteurId) {
-    System.out.println("🔍 Recherche wallet pour conducteur ID: " + conducteurId);
+    System.out.println("🔍 Recherche/création wallet pour conducteur ID: " + conducteurId);
     
-    // Utiliser findByConducteurId directement si vous avez cette méthode
-    // Sinon créer une instance partielle comme vous le faites
+    // Créer un ConducteurDto minimal
+    ConducteurDto conducteurDto = new ConducteurDto();
+    conducteurDto.setId(conducteurId);
+    
+    // Utiliser getOrCreateWallet pour s'assurer que le wallet existe
+    // Cette méthode gère déjà la logique de création si nécessaire
+    WalletDto walletDto = getOrCreateWallet(conducteurDto);
+    
+    // Maintenant récupérer le wallet avec ses transactions
     Wallet wallet = walletRepository.findByConducteurId(conducteurId)
-            .orElseThrow(() -> {
-                System.err.println("❌ Wallet non trouvé pour le conducteur ID: " + conducteurId);
-                return new RuntimeException("Wallet non trouvé pour ce conducteur");
-            });
-
-    System.out.println("✅ Wallet trouvé - ID: " + wallet.getId() +
+            .orElseThrow(() -> new RuntimeException("Erreur inattendue : wallet devrait exister"));
+    
+    System.out.println("✅ Wallet final - ID: " + wallet.getId() + 
                        ", Transactions: " + (wallet.getTransactions() != null ? wallet.getTransactions().size() : 0));
-
+    
     // Conversion en DTO avec toutes les transactions
     return WalletMapper.toDto(wallet);
 }
