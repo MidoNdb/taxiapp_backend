@@ -208,13 +208,13 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http 
-            // .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
+        http
+            .cors(cors -> cors.configurationSource(corsConfigurationSource())) // Enable CORS
             .csrf(csrf -> csrf.disable())
-             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-               // .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Autoriser OPTIONS
-                .requestMatchers(HttpMethod.OPTIONS,"/auth/**").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Autoriser OPTIONS
+                .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**", "/ws").permitAll() // ✅ WebSocket endpoints
                 .requestMatchers("/courses/admin/**").hasRole("ADMIN")
                 .requestMatchers("/passagers/admin/**").hasRole("ADMIN")
