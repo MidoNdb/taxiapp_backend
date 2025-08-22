@@ -214,7 +214,7 @@ public class SecurityConfig {
              .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                // .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Autoriser OPTIONS
-                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers(HttpMethod.OPTIONS,"/auth/**").permitAll()
                 .requestMatchers("/ws/**", "/ws").permitAll() // ✅ WebSocket endpoints
                 .requestMatchers("/courses/admin/**").hasRole("ADMIN")
                 .requestMatchers("/passagers/admin/**").hasRole("ADMIN")
