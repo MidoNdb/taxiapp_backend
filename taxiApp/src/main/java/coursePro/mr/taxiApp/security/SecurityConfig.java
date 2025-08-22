@@ -213,7 +213,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
              .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Autoriser OPTIONS
+               // .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll() // ✅ Autoriser OPTIONS
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/ws/**", "/ws").permitAll() // ✅ WebSocket endpoints
                 .requestMatchers("/courses/admin/**").hasRole("ADMIN")
