@@ -239,19 +239,32 @@ public class SecurityConfig {
         return http.build();
     }
 
-    // ✅ CORS Configuration CORRIGÉE - Harmonisée avec les autres configs
+    // ✅ CORS Configuration CORRIGÉE pour la production
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        // ✅ CORRECTION PRINCIPALE : Origine spécifique au lieu de "*"
-        configuration.setAllowedOrigins(List.of("http://localhost:3000")); 
+        // ✅ SOLUTION 1 : Autoriser tous les domaines temporairement pour tester
+        configuration.setAllowedOriginPatterns(List.of("*"));
         
-        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // ✅ SOLUTION 2 (RECOMMANDÉE) : Spécifier vos domaines autorisés
+        // configuration.setAllowedOrigins(List.of(
+        //     "http://localhost:3000",           // Développement local
+        //     "https://your-frontend-domain.com", // Production frontend
+        //     "https://your-admin-panel.com"     // Admin panel si différent
+        // ));
+        
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
         
-        // ✅ Pas de allowCredentials pour éviter les conflits
-        // configuration.setAllowCredentials(false); // Par défaut false
+        // ✅ Permettre les credentials si nécessaire
+        configuration.setAllowCredentials(true);
+        
+        // ✅ Exposer les headers nécessaires
+        configuration.setExposedHeaders(List.of("Authorization"));
+        
+        // ✅ Cache preflight requests
+        configuration.setMaxAge(3600L);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
