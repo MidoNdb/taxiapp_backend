@@ -21,7 +21,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import coursePro.mr.taxiApp.web.NotificationController;
 import coursePro.mr.taxiApp.web.NotificationSocketController;
 
 @Service
@@ -30,13 +29,13 @@ public class TransactionWalletServiceImpl implements TransactionWalletService {
     private final TransactionWalletRepository transactionRepo;
     private final WalletRepository walletRepository;
     private final WalletService walletService; 
-    private final NotificationController notificationController;
+    private final NotificationSocketController notificationController;
 
     public TransactionWalletServiceImpl(
         TransactionWalletRepository transactionRepo,
         WalletRepository walletRepository,
         WalletService walletService,
-        NotificationController notificationController
+        NotificationSocketController notificationController
     ) {
         this.transactionRepo = transactionRepo;
         this.walletRepository = walletRepository;

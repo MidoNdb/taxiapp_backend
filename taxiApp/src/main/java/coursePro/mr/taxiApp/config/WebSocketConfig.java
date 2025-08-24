@@ -1,3 +1,29 @@
+// package coursePro.mr.taxiApp.config;
+
+// import org.springframework.context.annotation.Configuration;
+// import org.springframework.messaging.simp.config.MessageBrokerRegistry;
+// import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
+// import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
+// import org.springframework.web.socket.config.annotation.WebSocketMessageBrokerConfigurer;
+
+// @Configuration
+// @EnableWebSocketMessageBroker
+// public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
+
+//     @Override
+//     public void configureMessageBroker(MessageBrokerRegistry config) {
+//         config.enableSimpleBroker("/topic", "/queue");
+//         config.setApplicationDestinationPrefixes("/app");
+//     }
+
+//     @Override
+//     public void registerStompEndpoints(StompEndpointRegistry registry) {
+//         // Configuration sans CORS pour les tests locaux
+//         registry.addEndpoint("/ws");
+//         registry.addEndpoint("/ws").withSockJS();
+//     }
+// }
+
 package coursePro.mr.taxiApp.config;
 
 import org.springframework.context.annotation.Configuration;
@@ -12,19 +38,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-        config.enableSimpleBroker("/topic");
+        config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
-        // ✅ CORRECTION: Autoriser toutes les origines pour les tests
+        // Configuration la plus simple possible
         registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*") // Autoriser toutes les origines
-                .withSockJS(); // ✅ Activer SockJS pour une meilleure compatibilité
-        
-        // ✅ Endpoint sans SockJS aussi
-        registry.addEndpoint("/ws")
-                .setAllowedOriginPatterns("*"); // Pour les connexions WebSocket natives
+                .setAllowedOrigins("*");
+        registry.addEndpoint("/ws").withSockJS();
     }
 }

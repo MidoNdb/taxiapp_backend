@@ -3,6 +3,10 @@ package coursePro.mr.taxiApp.web;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Controller;
+
+import java.util.HashMap;
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,25 +44,27 @@ public class NotificationSocketController {
             logger.error("❌ Erreur lors de l'envoi de la notification: {}", e.getMessage(), e);
         }
     }
-   public void notifyAdminRechargement(TransactionWallet transaction) {
+   
+     // ✅ Méthode principale pour notifier les admins
+    public void notifyAdminRechargement(TransactionWallet transaction) {
         try {
-            logger.info("💰 Notification admin - Nouveau rechargement ID: {}", transaction.getId());
+            Map<String, Object> notification = new HashMap<>();
+            notification.put("type", "NOUVEAU_RECHARGEMENT");
+            notification.put("transactionId", transaction.getId());
+            notification.put("montant", transaction.getMontant());
+            notification.put("conducteurNom", transaction.getWallet().getConducteur().getUtilisateur().getNom());
+            notification.put("conducteurTel", transaction.getWallet().getConducteur().getUtilisateur().getTelephone());
+            notification.put("preuveUrl", transaction.getPreuveUrl());
+            notification.put("dateDemande", transaction.getDate());
+            notification.put("statut", transaction.getStatut().toString());
+            notification.put("timestamp", System.currentTimeMillis());
             
-            RechargementNotificationDto notification = new RechargementNotificationDto();
-            notification.setType("NOUVEAU_RECHARGEMENT");
-            notification.setTransactionId(transaction.getId());
-            notification.setMontant(transaction.getMontant());
-            notification.setConducteur(ConducteurMapper.toDto(transaction.getWallet().getConducteur()));
-            notification.setPreuveUrl(transaction.getPreuveUrl());
-            notification.setDateDemande(transaction.getDate());
-            notification.setStatut(transaction.getStatut().toString());
-            
-            // Envoi vers tous les admins connectés
+            // ✅ Envoi vers tous les admins connectés
             messagingTemplate.convertAndSend("/topic/admin/rechargements", notification);
-            logger.info("✅ Notification admin rechargement envoyée");
+           // logger.info("✅ Notification admin rechargement envoyée");
             
         } catch (Exception e) {
-            logger.error("❌ Erreur notification admin rechargement: {}", e.getMessage(), e);
+           // logger.error("❌ Erreur notification admin rechargement: {}", e.getMessage(), e);
         }
     }
     // envoyer à un utilisateur spécifique
@@ -71,4 +77,7 @@ public class NotificationSocketController {
             logger.error("❌ Erreur envoi notification utilisateur: {}", e.getMessage(), e);
         }
     }
+
+
+    
 }

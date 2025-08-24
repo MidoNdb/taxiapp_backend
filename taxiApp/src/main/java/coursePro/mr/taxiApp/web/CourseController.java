@@ -156,28 +156,67 @@ public ResponseEntity<?> deleteCourseByAdmin(@PathVariable Long id) {
         }
     }
     
-    @PutMapping("/conducteur/accepter/{id}")
-public ResponseEntity<?> accepterCourse(@PathVariable Long id,HttpServletRequest request ) {
-    try {
-        System.out.println(id);
-           String token = request.getHeader("Authorization").substring(7); // Supprime "Bearer "
-        Long userId = jwtService.extractUserId(token); // Ton propre JwtService
+//     @PutMapping("/conducteur/accepter/{id}")
+// public ResponseEntity<?> accepterCourse(@PathVariable Long id,HttpServletRequest request ) {
+//     try {
+//         System.out.println(id);
+//            String token = request.getHeader("Authorization").substring(7); // Supprime "Bearer "
+//         Long userId = jwtService.extractUserId(token); // Ton propre JwtService
           
+//         Course course = courseService.findById(id);
+        
+//         // Vérifier que la course est encore en attente
+//         if (!course.getStatut().equals(StatutCourse.EN_ATTENTE)) {
+//             return ResponseEntity.status(HttpStatus.CONFLICT)
+//                 .body("La course n'est plus disponible.");
+//         }
+//         courseService.accepterCourse(id,userId);
+//         return ResponseEntity.ok("Course acceptée");
+//     } catch (Exception e) {
+//         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+//             .body("Erreur lors de l'acceptation : " + e.getMessage());
+//     }
+// }
+
+@PutMapping("/conducteur/accepter/{id}")
+public ResponseEntity<?> accepterCourse(@PathVariable Long id, HttpServletRequest request) {
+    try {
+        System.out.println("Acceptation course ID: " + id);
+        
+        String token = request.getHeader("Authorization").substring(7);
+        Long userId = jwtService.extractUserId(token);
+        
         Course course = courseService.findById(id);
         
-        // Vérifier que la course est encore en attente
+        if (course == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(Map.of("error", "Course non trouvée"));
+        }
+        
         if (!course.getStatut().equals(StatutCourse.EN_ATTENTE)) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body("La course n'est plus disponible.");
+                .body(Map.of("error", "La course n'est plus disponible"));
         }
-        courseService.accepterCourse(id,userId);
-        return ResponseEntity.ok("Course acceptée");
+        
+        // Accepter la course
+        courseService.accepterCourse(id, userId);
+        
+        // Retourner une réponse JSON structurée
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Course acceptée",
+            "courseId", id
+        ));
+        
     } catch (Exception e) {
+        e.printStackTrace(); // Pour debug
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body("Erreur lors de l'acceptation : " + e.getMessage());
+            .body(Map.of(
+                "error", "Erreur lors de l'acceptation",
+                "details", e.getMessage()
+            ));
     }
 }
-
 
     @PutMapping("/conducteur/{courseId}/status")
     

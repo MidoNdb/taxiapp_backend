@@ -404,48 +404,50 @@ public CourseDto createCourseByAdmin(CourseDto course) {
 @Transactional
 public CourseDto updateCourseByAdmin(CourseDto course, Long idCourse) {
     // Validation des données d'entrée
-    if (course == null || course.getPassager() == null || 
-        course.getPassager().getTelephone() == null) {
+    if (course == null || course.getPassager() == null ||
+         course.getPassager().getTelephone() == null) {
         throw new IllegalArgumentException("Données de course invalides");
     }
-    
+
     // Vérifier si la course existe
     Optional<Course> optCourse = repo.findById(idCourse);
     if (!optCourse.isPresent()) {
         throw new IllegalArgumentException("Course non trouvée avec l'ID: " + idCourse);
     }
-    
+
     Course existingCourse = optCourse.get();
-    
+
     // Récupérer le passager existant de la course
     Passager passager = existingCourse.getPassager();
-    
+
     // Mettre à jour seulement le nom et le téléphone
     Utilisateur utilisateur = passager.getUtilisateur();
     utilisateur.setNom(course.getPassager().getNom());
     utilisateur.setTelephone(course.getPassager().getTelephone());
-    
+
     // Sauvegarder l'utilisateur mis à jour
     Utilisateur savedUser = userRepo.save(utilisateur);
-    
+
     // Mettre à jour les références du passager
     passager.setUtilisateur(savedUser);
-    
+
     // Mettre à jour la course existante avec les nouvelles données
     Course entity = CourseMapper.toEntity(course);
     entity.setId(idCourse); // Conserver l'ID de la course existante
     entity.setPassager(passager);
-    
+
     // Conserver le conducteur existant (ne pas le modifier)
     entity.setConducteur(existingCourse.getConducteur());
-    
+
     // Sauvegarder la course mise à jour
     Course savedEntity = repo.save(entity);
     CourseDto savedDto = CourseMapper.toDto(savedEntity);
-    
-    // Envoyer la notification pour course mise à jour
-    notificationSocketController.notifyNewCourse(savedDto);
-    
+
+    // Envoyer la notification SEULEMENT si le statut est EN_ATTENTE
+    if (savedEntity.getStatut() == StatutCourse.EN_ATTENTE) {
+        notificationSocketController.notifyNewCourse(savedDto);
+    }
+
     return savedDto;
 }
 }
