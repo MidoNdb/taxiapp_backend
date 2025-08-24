@@ -439,10 +439,6 @@ public CourseDto updateCourseByAdmin(CourseDto course, Long idCourse) {
     // Conserver le conducteur existant (ne pas le modifier)
     entity.setConducteur(existingCourse.getConducteur());
     
-    // Conserver les autres champs qui ne doivent pas être modifiés
-    //entity.setCreatedAt(existingCourse.getCreatedAt());
-    //entity.setUpdatedAt(new Date()); // Mettre à jour la date de modification
-    
     // Sauvegarder la course mise à jour
     Course savedEntity = repo.save(entity);
     CourseDto savedDto = CourseMapper.toDto(savedEntity);
