@@ -121,8 +121,8 @@ public class WalletServiceImpl implements WalletService {
     @Override
     public WalletDto getWallet(Long conducteurId) {
        
-            Wallet wallet = walletRepository.findById(conducteurId)
-                .orElseThrow(() -> new RuntimeException("Wallet introuvable avec l'ID : " + conducteurId));
+            Wallet wallet = walletRepository.findByConducteurId(conducteurId)
+                .orElseThrow(() -> new RuntimeException("Wallet introuvable avec le conducteur de  l'ID : " + conducteurId));
 
                 WalletDto wDto = new WalletDto();
                 wDto.setId(wallet.getId());

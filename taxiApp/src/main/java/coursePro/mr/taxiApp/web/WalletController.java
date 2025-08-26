@@ -101,6 +101,7 @@ public ResponseEntity<?> rejeterTransactionAdmin(@PathVariable Long id) {
 @GetMapping("/conducteur/walletconducteur")
     public ResponseEntity<?> getWalletConducteur(HttpServletRequest request) {
         try {
+            
             // Extraire l'ID du conducteur depuis le token JWT
             String token = request.getHeader("Authorization").substring(7);
             Long conducteurId = jwtService.extractUserId(token);
