@@ -8,11 +8,13 @@ import coursePro.mr.taxiApp.dto.ConducteurDto;
 import coursePro.mr.taxiApp.dto.WalletDto;
 import coursePro.mr.taxiApp.entity.Conducteur;
 import coursePro.mr.taxiApp.entity.Wallet;
+import coursePro.mr.taxiApp.mapper.ConducteurMapper;
 import coursePro.mr.taxiApp.mapper.WalletMapper;
 import coursePro.mr.taxiApp.service.WalletService;
 import jakarta.transaction.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Service
 public class WalletServiceImpl implements WalletService {
@@ -114,5 +116,21 @@ public class WalletServiceImpl implements WalletService {
         wallet.setDernierRechargement(LocalDateTime.now());
         wallet.setActif(true);
         walletRepository.save(wallet);
+    }
+
+    @Override
+    public WalletDto getWallet(Long conducteurId) {
+       
+            Wallet wallet = walletRepository.findById(conducteurId)
+                .orElseThrow(() -> new RuntimeException("Wallet introuvable avec l'ID : " + conducteurId));
+
+                WalletDto wDto = new WalletDto();
+                wDto.setId(wallet.getId());
+                wDto.setSolde(wallet.getSolde());
+                wDto.setConducteur(ConducteurMapper.toDto(wallet.getConducteur()));
+                wDto.setDernierRechargement(wallet.getDernierRechargement());
+                wDto.setActif(wallet.getActif());
+                return wDto;
+        
     }
 }

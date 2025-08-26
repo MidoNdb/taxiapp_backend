@@ -1,5 +1,7 @@
 package coursePro.mr.taxiApp.web;
 
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import coursePro.mr.taxiApp.dto.TransactionWalletDto;
@@ -94,4 +97,69 @@ public ResponseEntity<?> rejeterTransactionAdmin(@PathVariable Long id) {
         return ResponseEntity.status(500).body("Erreur lors du rejet: " + e.getMessage());
     }
 }
+
+@GetMapping("/conducteur/walletconducteur")
+    public ResponseEntity<?> getWalletConducteur(HttpServletRequest request) {
+        try {
+            // Extraire l'ID du conducteur depuis le token JWT
+            String token = request.getHeader("Authorization").substring(7);
+            Long conducteurId = jwtService.extractUserId(token);
+            
+            // Récupérer le wallet
+            WalletDto wallet = walletService.getWallet(conducteurId);
+            
+            return ResponseEntity.ok(wallet);
+            
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "error", "Wallet non trouvé",
+                "message", e.getMessage()
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Erreur serveur",
+                "message", e.getMessage()
+            ));
+        }
+    }
+    
+    
+    @GetMapping("/conducteur/can-accept-course")
+    public ResponseEntity<?> canAcceptCourse(
+            @RequestParam double montantCourse,
+            HttpServletRequest request) {
+        try {
+            String token = request.getHeader("Authorization").substring(7);
+            Long conducteurId = jwtService.extractUserId(token);
+            
+            WalletDto wallet = walletService.getWallet(conducteurId);
+            
+            // Vérifier si le wallet est actif
+            if (!wallet.getActif()) {
+                return ResponseEntity.ok(Map.of(
+                    "canAccept", false,
+                    "reason", "Wallet inactif"
+                ));
+            }
+            
+            // Calculer la commission (7%)
+            double commission = montantCourse * 0.07;
+            
+            // Vérifier le solde
+            boolean canAccept = wallet.getSolde() >= commission;
+            
+            return ResponseEntity.ok(Map.of(
+                "canAccept", canAccept,
+                "soldeActuel", wallet.getSolde(),
+                "commissionRequise", commission,
+                "reason", canAccept ? "OK" : "Solde insuffisant"
+            ));
+            
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "error", "Erreur lors de la vérification",
+                "message", e.getMessage()
+            ));
+        }
+    }
 }
