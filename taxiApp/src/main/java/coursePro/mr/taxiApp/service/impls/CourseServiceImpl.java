@@ -118,47 +118,29 @@ public void accepterCourse(Long courseId, Long conducteurId) {
     if (courseId == null || conducteurId == null) {
         throw new IllegalArgumentException("L'ID de la course et l'ID du conducteur ne peuvent pas être null");
     }
-    
+
     // Récupération du conducteur avec gestion d'erreur
     Conducteur conducteur = conducteurRepo.findById(conducteurId)
         .orElseThrow(() -> new EntityNotFoundException("Conducteur non trouvé avec l'ID: " + conducteurId));
-    
+
     // Récupération de la course avec gestion d'erreur
     Course course = repo.findById(courseId)
         .orElseThrow(() -> new EntityNotFoundException("Course non trouvée avec l'ID: " + courseId));
-    
+
     // Vérification que la course peut être acceptée
     if (course.getStatut() != StatutCourse.EN_ATTENTE) {
         throw new IllegalStateException("Cette course ne peut pas être acceptée. Statut actuel: " + course.getStatut());
     }
-    
+
     course.setStatut(StatutCourse.ACCEPTEE);
     course.setConducteur(conducteur);
     course.setPickupTime(LocalDateTime.now()); // Optionnel: définir l'heure d'acceptation
-    
+
     // Sauvegarde de la course
-    Course savedCourse = repo.save(course);
+    repo.save(course);
     
-    try {
-        Long passagerId = savedCourse.getPassager().getId();
-        
-        NotificationMessage notif = new NotificationMessage();
-        notif.setMessage("Votre course a été acceptée par un conducteur !");
-        notif.setUtilisateurId(passagerId);
-        
-        // Envoi ciblé au passager
-        notificationSocketController.sendToUtilisateur(passagerId, notif);
-        
-        // Optionnel: Notification au conducteur aussi
-        NotificationMessage notifConducteur = new NotificationMessage();
-        notifConducteur.setMessage("Vous avez accepté une nouvelle course");
-        notifConducteur.setUtilisateurId(conducteurId);
-        notificationSocketController.sendToUtilisateur(conducteurId, notifConducteur);
-        
-    } catch (Exception e) {
-        // Log l'erreur mais ne fait pas échouer la transaction principale
-       // logger.error("Erreur lors de l'envoi de la notification pour la course " + courseId, e);
-    }
+    // ✅ NOUVEAU: Notifier tous les autres conducteurs que cette course n'est plus disponible
+    notificationSocketController.notifyCourseAcceptedByOther(courseId);
 }
 // Ajoutez cette méthode dans CourseServiceImpl.java
 

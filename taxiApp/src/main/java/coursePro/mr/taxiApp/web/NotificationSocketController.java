@@ -78,6 +78,23 @@ public class NotificationSocketController {
         }
     }
 
-
+    public void notifyCourseAcceptedByOther(Long courseId) {
+    try {
+        logger.info("Notification course acceptée par un autre - Course ID: {}", courseId);
+        
+        Map<String, Object> notification = new HashMap<>();
+        notification.put("type", "COURSE_ACCEPTED_BY_OTHER");
+        notification.put("courseId", courseId);
+        notification.put("timestamp", System.currentTimeMillis());
+        
+        // Envoyer à tous les conducteurs connectés
+        messagingTemplate.convertAndSend("/topic/driver/courses", notification);
+        
+        logger.info("Notification course acceptée envoyée avec succès");
+        
+    } catch (Exception e) {
+        logger.error("Erreur lors de l'envoi de la notification course acceptée: {}", e.getMessage(), e);
+    }
+}
     
 }
